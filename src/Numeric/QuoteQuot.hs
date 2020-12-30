@@ -15,6 +15,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnboxedTuples #-}
 
+{-# OPTIONS_GHC -Wno-missing-signatures #-}
+
 module Numeric.QuoteQuot
   (
   -- * Quasiquoters
@@ -30,7 +32,6 @@ module Numeric.QuoteQuot
 import Prelude
 import Data.Bits
 import GHC.Exts
-import Language.Haskell.TH
 
 -- | Quote integer division ('quot') by a compile-time known divisor,
 -- which generates source code, employing arithmetic and bitwise operations only.
@@ -74,10 +75,8 @@ import Language.Haskell.TH
 -- because other types lack a fast branchless routine for 'MulHi'.
 -- For 'Word' such primitive is provided by 'timesWord2#'.
 --
-quoteQuot :: Word -> Q (TExp (Word -> Word))
 quoteQuot d = go (astQuot d)
   where
-    go :: AST Word -> Q (TExp (Word -> Word))
     go = \case
       Arg            -> [|| id ||]
       Shr x k        -> [|| (`shiftR` k) . $$(go x) ||]
@@ -90,11 +89,9 @@ quoteQuot d = go (astQuot d)
       CmpLT x (W# k) -> [|| (\(W# w) -> W# (int2Word# (w `ltWord#` k))) . $$(go x) ||]
 
 -- | Similar to 'quoteQuot', but for 'rem'.
-quoteRem :: Word -> Q (TExp (Word -> Word))
 quoteRem d = [|| snd . $$(quoteQuotRem d) ||]
 
 -- | Similar to 'quoteQuot', but for 'quotRem'.
-quoteQuotRem :: Word -> Q (TExp (Word -> (Word, Word)))
 quoteQuotRem d = [|| \w -> let q = $$(quoteQuot d) w in (q, w - d * q) ||]
 
 -- | An abstract syntax tree to represent

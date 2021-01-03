@@ -10,6 +10,7 @@
 --
 
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -27,10 +28,15 @@ module Numeric.QuoteQuot
   , astQuot
   , AST(..)
   , interpretAST
+  , MulHi(..)
   ) where
+
+#include "MachDeps.h"
 
 import Prelude
 import Data.Bits
+import Data.Int
+import Data.Word
 import GHC.Exts
 
 -- | Quote integer division ('quot') by a compile-time known divisor,
@@ -70,29 +76,64 @@ import GHC.Exts
 -- Benchmarks show that this implementation is __3.5x faster__
 -- than @(`@'quot'@` 10)@.
 --
--- Note that even while 'astQuot' is polymorphic,
--- 'quoteQuot' is provided for 'Word' arguments only,
--- because other types lack a fast branchless routine for 'MulHi'.
--- For 'Word' such primitive is provided by 'timesWord2#'.
---
 quoteQuot d = go (astQuot d)
   where
     go = \case
       Arg            -> [|| id ||]
       Shr x k        -> [|| (`shiftR` k) . $$(go x) ||]
       Shl x k        -> [|| (`shiftL` k) . $$(go x) ||]
-      MulHi x (W# k) -> [|| (\(W# w) -> let !(# hi, _ #) = timesWord2# w k in W# hi) . $$(go x) ||]
+      MulHi x k      -> [|| (`mulHi` k) . $$(go x) ||]
       MulLo x k      -> [|| (* k) . $$(go x) ||]
       Add x y        -> [|| \w -> $$(go x) w + $$(go y) w ||]
       Sub x y        -> [|| \w -> $$(go x) w - $$(go y) w ||]
-      CmpGE x (W# k) -> [|| (\(W# w) -> W# (int2Word# (w `geWord#` k))) . $$(go x) ||]
-      CmpLT x (W# k) -> [|| (\(W# w) -> W# (int2Word# (w `ltWord#` k))) . $$(go x) ||]
+      CmpGE x k      -> [|| (\w -> fromIntegral (I# (dataToTag# (w >= k)))) . $$(go x) ||]
+      CmpLT x k      -> [|| (\w -> fromIntegral (I# (dataToTag# (w <  k)))) . $$(go x) ||]
 
 -- | Similar to 'quoteQuot', but for 'rem'.
 quoteRem d = [|| snd . $$(quoteQuotRem d) ||]
 
 -- | Similar to 'quoteQuot', but for 'quotRem'.
 quoteQuotRem d = [|| \w -> let q = $$(quoteQuot d) w in (q, w - d * q) ||]
+
+-- | Types allowing to multiply wide and return the high word of result.
+class (Integral a, FiniteBits a) => MulHi a where
+  mulHi :: a -> a -> a
+
+instance MulHi Word8 where
+  mulHi x y = fromIntegral ((fromIntegral x * fromIntegral y :: Word16) `shiftR` 8)
+
+instance MulHi Word16 where
+  mulHi x y = fromIntegral ((fromIntegral x * fromIntegral y :: Word32) `shiftR` 16)
+
+instance MulHi Word32 where
+  mulHi x y = fromIntegral ((fromIntegral x * fromIntegral y :: Word64) `shiftR` 32)
+
+#if WORD_SIZE_IN_BITS == 64
+instance MulHi Word64 where
+  mulHi x y = fromIntegral (fromIntegral x `mulHi` fromIntegral y :: Word)
+#endif
+
+instance MulHi Word where
+  mulHi (W# x) (W# y) = let !(# hi, _ #) = timesWord2# x y in W# hi
+
+instance MulHi Int8 where
+  mulHi x y = fromIntegral ((fromIntegral x * fromIntegral y :: Int16) `shiftR` 8)
+
+instance MulHi Int16 where
+  mulHi x y = fromIntegral ((fromIntegral x * fromIntegral y :: Int32) `shiftR` 16)
+
+instance MulHi Int32 where
+  mulHi x y = fromIntegral ((fromIntegral x * fromIntegral y :: Int64) `shiftR` 32)
+
+#if MIN_VERSION_base(4,15,0)
+#if WORD_SIZE_IN_BITS == 64
+instance MulHi Int64 where
+  mulHi x y = fromIntegral (fromIntegral x `mulHi` fromIntegral y :: Int)
+#endif
+
+instance MulHi Int where
+  mulHi (I# x) (I# y) = let !(# _, hi, _ #) = timesInt2# x y in I# hi
+#endif
 
 -- | An abstract syntax tree to represent
 -- a function of one argument.

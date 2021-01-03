@@ -96,18 +96,38 @@ instance Arbitrary Word256 where arbitrary = arbitrarySizedBoundedIntegral
 instance Arbitrary Int128  where arbitrary = arbitrarySizedBoundedIntegral
 #endif
 
+#define testQuotes(ty) \
+    [ testProperty  "1" $ \x -> $$(quoteQuotRem  (1 :: ty)) x === x `quotRem`  1 \
+    , testProperty  "2" $ \x -> $$(quoteQuotRem  (2 :: ty)) x === x `quotRem`  2 \
+    , testProperty  "3" $ \x -> $$(quoteQuotRem  (3 :: ty)) x === x `quotRem`  3 \
+    , testProperty  "4" $ \x -> $$(quoteQuotRem  (4 :: ty)) x === x `quotRem`  4 \
+    , testProperty  "5" $ \x -> $$(quoteQuotRem  (5 :: ty)) x === x `quotRem`  5 \
+    , testProperty  "6" $ \x -> $$(quoteQuotRem  (6 :: ty)) x === x `quotRem`  6 \
+    , testProperty  "7" $ \x -> $$(quoteQuotRem  (7 :: ty)) x === x `quotRem`  7 \
+    , testProperty  "8" $ \x -> $$(quoteQuotRem  (8 :: ty)) x === x `quotRem`  8 \
+    , testProperty  "9" $ \x -> $$(quoteQuotRem  (9 :: ty)) x === x `quotRem`  9 \
+    , testProperty "10" $ \x -> $$(quoteQuotRem (10 :: ty)) x === x `quotRem` 10 \
+    , testProperty "maxBound" $ \x -> $$(quoteQuotRem (maxBound :: ty)) x === x `quotRem` maxBound \
+    , testProperty "maxBound - 1" $ \x -> $$(quoteQuotRem (maxBound - 1 :: ty)) x === x `quotRem` (maxBound - 1) \
+    ] \
+
 testQuotes :: TestTree
 testQuotes = testGroup "Quotes"
-  [ testProperty  "1" $ \x -> $$(quoteQuotRem  1) x === x `quotRem`  1
-  , testProperty  "2" $ \x -> $$(quoteQuotRem  2) x === x `quotRem`  2
-  , testProperty  "3" $ \x -> $$(quoteQuotRem  3) x === x `quotRem`  3
-  , testProperty  "4" $ \x -> $$(quoteQuotRem  4) x === x `quotRem`  4
-  , testProperty  "5" $ \x -> $$(quoteQuotRem  5) x === x `quotRem`  5
-  , testProperty  "6" $ \x -> $$(quoteQuotRem  6) x === x `quotRem`  6
-  , testProperty  "7" $ \x -> $$(quoteQuotRem  7) x === x `quotRem`  7
-  , testProperty  "8" $ \x -> $$(quoteQuotRem  8) x === x `quotRem`  8
-  , testProperty  "9" $ \x -> $$(quoteQuotRem  9) x === x `quotRem`  9
-  , testProperty "10" $ \x -> $$(quoteQuotRem 10) x === x `quotRem` 10
-  , testProperty "maxBound" $ \x -> $$(quoteQuotRem maxBound) x === x `quotRem` maxBound
-  , testProperty "maxBound - 1" $ \x -> $$(quoteQuotRem (maxBound - 1)) x === x `quotRem` (maxBound - 1)
+  [ testGroup "Word8"  testQuotes(Word8)
+  , testGroup "Word16" testQuotes(Word16)
+  , testGroup "Word32" testQuotes(Word32)
+#if WORD_SIZE_IN_BITS == 64
+  , testGroup "Word64" testQuotes(Word64)
+#endif
+  , testGroup "Word"   testQuotes(Word)
+
+  , testGroup "Int8"   testQuotes(Int8)
+  , testGroup "Int16"  testQuotes(Int16)
+  , testGroup "Int32"  testQuotes(Int32)
+#if MIN_VERSION_base(4,15,0)
+#if WORD_SIZE_IN_BITS == 64
+  , testGroup "Int64"  testQuotes(Int64)
+#endif
+  , testGroup "Int"    testQuotes(Int)
+#endif
   ]

@@ -53,8 +53,9 @@ benchmark quote-quot-bench
   main-is:          Bench.hs
   hs-source-dirs:   bench
   default-language: Haskell2010
-  ghc-options:      -Wall
+  ghc-options:      -Wall -O2
   build-depends:
     base,
     quote-quot,
+    tasty-bench,
     template-haskell

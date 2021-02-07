@@ -16,7 +16,7 @@ jobs:
       fail-fast: true
       matrix:
         os: [ubuntu-latest]
-        ghc: ['8.10']
+        ghc: ['8.10', '9.0.1']
         include:
         - os: windows-latest
           ghc: 'latest'
@@ -24,7 +24,7 @@ jobs:
           ghc: 'latest'
     steps:
     - uses: actions/checkout@v2
-    - uses: actions/setup-haskell@v1
+    - uses: haskell/actions/setup@v1
       id: setup-haskell-cabal
       with:
         ghc-version: ${{ matrix.ghc }}
@@ -42,5 +42,6 @@ jobs:
         cabal sdist -z -o .
         cabal get quote-quot-*.tar.gz
         cd quote-quot-*/
-        cabal test --test-show-details=direct --constraint 'optparse-applicative -process' --constraint 'tasty -unix'
+        cabal test --test-show-details=direct
+        cabal bench
         cabal haddock

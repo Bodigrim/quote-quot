@@ -1,13 +1,13 @@
 cabal-version:      >=1.10
 name:               quote-quot
-version:            0.1.0.0
+version:            0.2.0.0
 license:            BSD3
 license-file:       LICENSE
 copyright:          2020 Andrew Lelechenko
 maintainer:         andrew.lelechenko@gmail.com
 author:             Andrew Lelechenko
-tested-with:        ghc ==8.10.3
-homepage:           https://github.com/Bodigrim/divide#readme
+tested-with:        ghc ==8.10.3, ghc ==9.0.1
+homepage:           https://github.com/Bodigrim/quote-quot#readme
 synopsis:           Divide without division
 description:
   Generate routines for integer division, employing arithmetic

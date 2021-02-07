@@ -1,4 +1,4 @@
-# quote-quot [![Hackage](http://img.shields.io/hackage/v/quote-quot.svg)](https://hackage.haskell.org/package/quote-quot) [![Stackage LTS](http://stackage.org/package/quote-quot/badge/lts)](http://stackage.org/lts/package/quote-quot) [![Stackage Nightly](http://stackage.org/package/quote-quot/badge/nightly)](http://stackage.org/nightly/package/quote-quot) [![GitHub Actions](https://github.com/Bodigrim/quote-quot/workflows/ci/badge.svg)](https://github.com/Bodigrim/quote-quot/actions?query=workflow%3Aci)
+# quote-quot [![Hackage](http://img.shields.io/hackage/v/quote-quot.svg)](https://hackage.haskell.org/package/quote-quot) [![Stackage LTS](http://stackage.org/package/quote-quot/badge/lts)](http://stackage.org/lts/package/quote-quot) [![Stackage Nightly](http://stackage.org/package/quote-quot/badge/nightly)](http://stackage.org/nightly/package/quote-quot)
 
 Generate routines for integer division, employing arithmetic
 and bitwise operations only, which are __2.5x-3.5x faster__
@@ -72,7 +72,7 @@ main = do
 $$(quoteQuot 10)  89 ms
 ```
 
-Common wisdom is that such microoptimizations are negligible in practice,
+Conventional wisdom is that such microoptimizations are negligible in practice,
 but this is not always the case. For instance, quite surprisingly,
 this trick alone
 [made Unicode normalization of Hangul characters twice faster](https://github.com/composewell/unicode-transforms/pull/42)

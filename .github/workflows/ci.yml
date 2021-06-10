@@ -24,13 +24,13 @@ jobs:
           ghc: 'latest'
     steps:
     - uses: actions/checkout@v2
-    - uses: haskell/actions/setup@v1
+    - uses: haskell/actions/setup@v1.2.1
       id: setup-haskell-cabal
       with:
         ghc-version: ${{ matrix.ghc }}
     - name: Update cabal package database
       run: cabal update
-    - uses: actions/cache@v2
+    - uses: actions/cache@v2.1.5
       name: Cache cabal stuff
       with:
         path: |

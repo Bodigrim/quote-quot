@@ -28,6 +28,7 @@ module Numeric.QuoteQuot
   , astQuot
   , AST(..)
   , interpretAST
+  , quoteAST
   , MulHi(..)
   ) where
 
@@ -83,18 +84,7 @@ quoteQuot ::
 #else
   (MulHi a, Lift a) => a -> Q (TExp (a -> a))
 #endif
-quoteQuot d = go (astQuot d)
-  where
-    go = \case
-      Arg            -> [|| id ||]
-      Shr x k        -> [|| (`shiftR` k) . $$(go x) ||]
-      Shl x k        -> [|| (`shiftL` k) . $$(go x) ||]
-      MulHi x k      -> [|| (`mulHi` k) . $$(go x) ||]
-      MulLo x k      -> [|| (* k) . $$(go x) ||]
-      Add x y        -> [|| \w -> $$(go x) w + $$(go y) w ||]
-      Sub x y        -> [|| \w -> $$(go x) w - $$(go y) w ||]
-      CmpGE x k      -> [|| (\w -> fromIntegral (I# (dataToTag# (w >= k)))) . $$(go x) ||]
-      CmpLT x k      -> [|| (\w -> fromIntegral (I# (dataToTag# (w <  k)))) . $$(go x) ||]
+quoteQuot d = quoteAST (astQuot d)
 
 -- | Similar to 'quoteQuot', but for 'rem'.
 quoteRem ::
@@ -197,6 +187,24 @@ interpretAST ast n = go ast
       Shr x k   -> go x `shiftR` k
       CmpGE x k -> if go x >= k then 1 else 0
       CmpLT x k -> if go x <  k then 1 else 0
+
+-- | Embed 'AST' into Haskell expression.
+quoteAST ::
+#if MIN_VERSION_template_haskell(2,17,0)
+  (MulHi a, Lift a, Quote m) => AST a -> Code m (a -> a)
+#else
+  (MulHi a, Lift a) => AST a -> Q (TExp (a -> a))
+#endif
+quoteAST = \case
+  Arg            -> [|| id ||]
+  Shr x k        -> [|| (`shiftR` k) . $$(quoteAST x) ||]
+  Shl x k        -> [|| (`shiftL` k) . $$(quoteAST x) ||]
+  MulHi x k      -> [|| (`mulHi` k) . $$(quoteAST x) ||]
+  MulLo x k      -> [|| (* k) . $$(quoteAST x) ||]
+  Add x y        -> [|| \w -> $$(quoteAST x) w + $$(quoteAST y) w ||]
+  Sub x y        -> [|| \w -> $$(quoteAST x) w - $$(quoteAST y) w ||]
+  CmpGE x k      -> [|| (\w -> fromIntegral (I# (dataToTag# (w >= k)))) . $$(quoteAST x) ||]
+  CmpLT x k      -> [|| (\w -> fromIntegral (I# (dataToTag# (w <  k)))) . $$(quoteAST x) ||]
 
 -- | 'astQuot' @d@ constructs an 'AST' representing
 -- a function, equivalent to 'quot' @a@ for positive @a@,

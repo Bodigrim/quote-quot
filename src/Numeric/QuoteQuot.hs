@@ -38,6 +38,7 @@ import Data.Bits
 import Data.Int
 import Data.Word
 import GHC.Exts
+import Language.Haskell.TH.Syntax
 
 -- | Quote integer division ('quot') by a compile-time known divisor,
 -- which generates source code, employing arithmetic and bitwise operations only.
@@ -76,6 +77,12 @@ import GHC.Exts
 -- Benchmarks show that this implementation is __3.5x faster__
 -- than @(`@'quot'@` 10)@.
 --
+quoteQuot ::
+#if MIN_VERSION_template_haskell(2,17,0)
+  (MulHi a, Lift a, Quote m) => a -> Code m (a -> a)
+#else
+  (MulHi a, Lift a) => a -> Q (TExp (a -> a))
+#endif
 quoteQuot d = go (astQuot d)
   where
     go = \case
@@ -90,9 +97,21 @@ quoteQuot d = go (astQuot d)
       CmpLT x k      -> [|| (\w -> fromIntegral (I# (dataToTag# (w <  k)))) . $$(go x) ||]
 
 -- | Similar to 'quoteQuot', but for 'rem'.
+quoteRem ::
+#if MIN_VERSION_template_haskell(2,17,0)
+  (MulHi a, Lift a, Quote m) => a -> Code m (a -> a)
+#else
+  (MulHi a, Lift a) => a -> Q (TExp (a -> a))
+#endif
 quoteRem d = [|| snd . $$(quoteQuotRem d) ||]
 
 -- | Similar to 'quoteQuot', but for 'quotRem'.
+quoteQuotRem ::
+#if MIN_VERSION_template_haskell(2,17,0)
+  (MulHi a, Lift a, Quote m) => a -> Code m (a -> (a, a))
+#else
+  (MulHi a, Lift a) => a -> Q (TExp (a -> (a, a)))
+#endif
 quoteQuotRem d = [|| \w -> let q = $$(quoteQuot d) w in (q, w - d * q) ||]
 
 -- | Types allowing to multiply wide and return the high word of result.

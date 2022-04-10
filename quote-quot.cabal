@@ -3,7 +3,7 @@ name:               quote-quot
 version:            0.2.0.0
 license:            BSD3
 license-file:       LICENSE
-copyright:          2020 Andrew Lelechenko
+copyright:          2020-2022 Andrew Lelechenko
 maintainer:         andrew.lelechenko@gmail.com
 author:             Andrew Lelechenko
 tested-with:        ghc ==8.10.7, ghc ==9.0.2, ghc ==9.2.2

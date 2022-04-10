@@ -1,5 +1,5 @@
 -- |
--- Copyright:   (c) 2020 Andrew Lelechenko
+-- Copyright:   (c) 2020-2022 Andrew Lelechenko
 -- Licence:     BSD3
 --
 

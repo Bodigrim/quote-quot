@@ -63,9 +63,11 @@ mkTests
 mkTests _
   | isSigned (undefined :: a) =
   [ testProperty "above zero" (prop @a . getNonNegative)
+  , testProperty "above zero assumeNonNegArg" (propNonNeg @a)
   , testProperty "below zero" (prop @a . negate . getNonNegative)
   , testProperty "above minBound" (prop @a . (minBound +) . getNonNegative)
   , testProperty "below maxBound" (prop @a . (maxBound -) . getNonNegative)
+  , testProperty "below maxBound assumeNonNegArg" (propNonNeg @a . NonNegative . (maxBound -) . getNonNegative)
   ]
   | otherwise =
   [ testProperty "above zero" (prop @a)
@@ -83,6 +85,19 @@ prop x (Positive y) = counterexample
   where
     ref = x `quot` y
     ast = astQuot y
+    q   = interpretAST ast x
+
+propNonNeg
+  :: (Integral a, FiniteBits a, Show a)
+  => NonNegative a -> Positive a -> Property
+propNonNeg (NonNegative x) (Positive y) = counterexample
+  (printf
+    "%s `quot` %s = %s /= %s = eval (%s) %s"
+    (show x) (show y) (show ref) (show q) (show ast) (show x))
+  (q == ref)
+  where
+    ref = x `quot` y
+    ast = assumeNonNegArg $ astQuot y
     q   = interpretAST ast x
 
 #ifdef MIN_VERSION_word24

@@ -29,6 +29,7 @@ module Numeric.QuoteQuot
   , AST(..)
   , interpretAST
   , quoteAST
+  , assumeNonNegArg
   , MulHi(..)
   ) where
 
@@ -166,6 +167,17 @@ data AST a
   | CmpLT  (AST a) a
   -- ^ 1 if less than, 0 otherwise
   deriving (Show)
+
+-- | Optimize 'AST', assuming that 'Arg' is non-negative.
+assumeNonNegArg :: (Ord a, Num a) => AST a -> AST a
+assumeNonNegArg = \case
+  Add x (CmpLT Arg n)
+    | n <= 0 -> x
+  Sub x (CmpLT Arg n)
+    | n <= 0 -> x
+  Add x (MulLo (CmpLT Arg n) _)
+    | n <= 0 -> x
+  e -> e
 
 -- | Reference (but slow) interpreter of 'AST'.
 -- It is not meant to be used in production

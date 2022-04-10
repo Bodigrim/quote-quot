@@ -1,6 +1,6 @@
 cabal-version:      >=1.10
 name:               quote-quot
-version:            0.2.0.0
+version:            0.2.1.0
 license:            BSD3
 license-file:       LICENSE
 copyright:          2020-2022 Andrew Lelechenko

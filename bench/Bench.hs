@@ -33,13 +33,15 @@ measureInt name f = bench name $
 #define benchWord(n) \
   bgroup (show (n :: Word)) \
     [ measureWord "quot" (`quot` (n :: Word)) \
-    , measureWord "quoteQuot" $$(quoteQuot (n :: Word)) \
+    , bcompare ("$NF == \"quot\" && $(NF-1) == \"" ++ show (n :: Word) ++ "\" && $(NF-2) == \"Word\"") \
+    $ measureWord "quoteQuot" $$(quoteQuot (n :: Word)) \
     ]
 
 #define benchInt(n) \
   bgroup (show (n :: Int)) \
     [ measureInt "quot" (`quot` (n :: Int)) \
-    , measureInt "quoteQuot" $$(quoteQuot (n :: Int)) \
+    , bcompare ("$NF == \"quot\" && $(NF-1) == \"" ++ show (n :: Int) ++ "\" && $(NF-2) == \"Int\"") \
+    $ measureInt "quoteQuot" $$(quoteQuot (n :: Int)) \
     ]
 
 main :: IO ()

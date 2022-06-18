@@ -57,5 +57,6 @@ benchmark quote-quot-bench
   build-depends:
     base,
     quote-quot,
+    tasty >= 1.2,
     tasty-bench >= 0.3,
     template-haskell

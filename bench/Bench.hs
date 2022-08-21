@@ -50,12 +50,14 @@ main = defaultMain
     [ benchWord(3)
     , benchWord(5)
     , benchWord(7)
+    , benchWord(10000)
     ]
 #if MIN_VERSION_base(4,15,0)
   , bgroup "Int"
     [ benchInt(3)
     , benchInt(5)
     , benchInt(7)
+    , benchWord(10000)
     ]
 #endif
   ]

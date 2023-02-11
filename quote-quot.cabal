@@ -6,7 +6,7 @@ license-file:       LICENSE
 copyright:          2020-2022 Andrew Lelechenko
 maintainer:         andrew.lelechenko@gmail.com
 author:             Andrew Lelechenko
-tested-with:        ghc ==8.10.7, ghc ==9.0.2, ghc ==9.2.4, ghc ==9.4.1
+tested-with:        ghc ==8.10.7, ghc ==9.0.2, ghc ==9.2.6, ghc ==9.4.4
 homepage:           https://github.com/Bodigrim/quote-quot#readme
 synopsis:           Divide without division
 description:

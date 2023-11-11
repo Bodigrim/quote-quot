@@ -9,6 +9,10 @@
 {-# LANGUAGE TypeApplications #-}
 
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Unused LANGUAGE pragma" #-}
+
+#include "MachDeps.h"
 
 module Main (main) where
 
@@ -19,7 +23,6 @@ import Data.Word
 import Numeric.QuoteQuot
 import Test.Tasty
 import Test.Tasty.QuickCheck
-import Text.Printf
 
 #ifdef MIN_VERSION_word24
 import Data.Int.Int24
@@ -31,7 +34,7 @@ import Data.WideWord
 #endif
 
 main :: IO ()
-main = defaultMain $ testGroup "All" [testAst, testQuotes]
+main = defaultMain $ testGroup "All" [testAst, testQuotes, testMulHi]
 
 testAst :: TestTree
 testAst = testGroup "Ast"
@@ -77,11 +80,8 @@ mkTests _
 prop
   :: (Integral a, FiniteBits a, Show a)
   => a -> Positive a -> Property
-prop x (Positive y) = counterexample
-  (printf
-    "%s `quot` %s = %s /= %s = eval (%s) %s"
-    (show x) (show y) (show ref) (show q) (show ast) (show x))
-  (q == ref)
+prop x (Positive y) =
+  q === ref
   where
     ref = x `quot` y
     ast = astQuot y
@@ -90,11 +90,8 @@ prop x (Positive y) = counterexample
 propNonNeg
   :: (Integral a, FiniteBits a, Show a)
   => NonNegative a -> Positive a -> Property
-propNonNeg (NonNegative x) (Positive y) = counterexample
-  (printf
-    "%s `quot` %s = %s /= %s = eval (%s) %s"
-    (show x) (show y) (show ref) (show q) (show ast) (show x))
-  (q == ref)
+propNonNeg (NonNegative x) (Positive y) =
+  q === ref
   where
     ref = x `quot` y
     ast = assumeNonNegArg $ astQuot y
@@ -144,3 +141,48 @@ testQuotes = testGroup "Quotes"
 #endif
   , testGroup "Int"    testQuotes(Int)
   ]
+
+testMulHi :: TestTree
+testMulHi = testGroup "MulHi"
+  [ testGroup "Word"    (mkTestsMulHi (Proxy @Word))
+  , testGroup "Word8"   (mkTestsMulHi (Proxy @Word8))
+  , testGroup "Word16"  (mkTestsMulHi (Proxy @Word16))
+  , testGroup "Word32"  (mkTestsMulHi (Proxy @Word32))
+#if WORD_SIZE_IN_BITS == 64
+  , testGroup "Word64"  (mkTestsMulHi (Proxy @Word64))
+#endif
+  , testGroup "Int"     (mkTestsMulHi (Proxy @Int))
+  , testGroup "Int8"    (mkTestsMulHi (Proxy @Int8))
+  , testGroup "Int16"   (mkTestsMulHi (Proxy @Int16))
+  , testGroup "Int32"   (mkTestsMulHi (Proxy @Int32))
+#if WORD_SIZE_IN_BITS == 64
+  , testGroup "Int64"   (mkTestsMulHi (Proxy @Int64))
+#endif
+  ]
+
+mkTestsMulHi
+  :: forall a.
+     (MulHi a, Show a, Bounded a, Arbitrary a)
+  => Proxy a -> [TestTree]
+mkTestsMulHi _ = [ combineMods mod1 mod2 | mod1 <- mods, mod2 <- mods]
+  where
+    mods :: [(String, a -> Bool, a -> a)]
+    mods
+      | isSigned (undefined :: a) =
+      [ ("above zero", (>= 0), id)
+      , ("below zero", (>= 0), negate)
+      , ("above minBound", (>= 0), (minBound +))
+      , ("below maxBound", (>= 0), (maxBound -))
+      ]
+      | otherwise =
+      [ ("above zero", const True, id)
+      , ("below maxBound", const True, (maxBound -))
+      ]
+
+    combineMods (name1, pred1, tr1) (name2, pred2, tr2) =
+      testProperty (name1 ++ ", " ++ name2) $
+        \x y -> pred1 x && pred2 y ==> propMulHi (tr1 x) (tr2 y)
+
+propMulHi :: (MulHi a, Show a) => a -> a -> Property
+propMulHi x y = mulHi x y ===
+  fromInteger ((toInteger x * toInteger y) `shiftR` finiteBitSize x)

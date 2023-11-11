@@ -13,7 +13,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MagicHash #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskellQuotes #-}
 {-# LANGUAGE UnboxedTuples #-}
 
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
@@ -135,7 +135,6 @@ instance MulHi Int16 where
 instance MulHi Int32 where
   mulHi x y = fromIntegral ((fromIntegral x * fromIntegral y :: Int64) `shiftR` 32)
 
-#if MIN_VERSION_base(4,15,0)
 #if WORD_SIZE_IN_BITS == 64
 instance MulHi Int64 where
   mulHi x y = fromIntegral (fromIntegral x `mulHi` fromIntegral y :: Int)
@@ -143,7 +142,6 @@ instance MulHi Int64 where
 
 instance MulHi Int where
   mulHi (I# x) (I# y) = let !(# _, hi, _ #) = timesInt2# x y in I# hi
-#endif
 
 -- | An abstract syntax tree to represent
 -- a function of one argument.

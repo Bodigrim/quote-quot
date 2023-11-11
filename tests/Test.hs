@@ -139,10 +139,8 @@ testQuotes = testGroup "Quotes"
   , testGroup "Int8"   testQuotes(Int8)
   , testGroup "Int16"  testQuotes(Int16)
   , testGroup "Int32"  testQuotes(Int32)
-#if MIN_VERSION_base(4,15,0)
 #if WORD_SIZE_IN_BITS == 64
   , testGroup "Int64"  testQuotes(Int64)
 #endif
   , testGroup "Int"    testQuotes(Int)
-#endif
   ]

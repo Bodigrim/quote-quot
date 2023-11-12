@@ -10,7 +10,6 @@
 --
 
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE TemplateHaskellQuotes #-}
@@ -32,8 +31,6 @@ module Numeric.QuoteQuot
   , assumeNonNegArg
   , MulHi(..)
   ) where
-
-#include "MachDeps.h"
 
 import Prelude
 import Data.Bits
@@ -80,29 +77,17 @@ import Language.Haskell.TH.Syntax
 -- than @(`@'quot'@` 10)@.
 --
 quoteQuot ::
-#if MIN_VERSION_template_haskell(2,17,0)
   (MulHi a, Lift a, Quote m) => a -> Code m (a -> a)
-#else
-  (MulHi a, Lift a) => a -> Q (TExp (a -> a))
-#endif
 quoteQuot d = quoteAST (astQuot d)
 
 -- | Similar to 'quoteQuot', but for 'rem'.
 quoteRem ::
-#if MIN_VERSION_template_haskell(2,17,0)
   (MulHi a, Lift a, Quote m) => a -> Code m (a -> a)
-#else
-  (MulHi a, Lift a) => a -> Q (TExp (a -> a))
-#endif
 quoteRem d = [|| snd . $$(quoteQuotRem d) ||]
 
 -- | Similar to 'quoteQuot', but for 'quotRem'.
 quoteQuotRem ::
-#if MIN_VERSION_template_haskell(2,17,0)
   (MulHi a, Lift a, Quote m) => a -> Code m (a -> (a, a))
-#else
-  (MulHi a, Lift a) => a -> Q (TExp (a -> (a, a)))
-#endif
 quoteQuotRem d = [|| \w -> let q = $$(quoteQuot d) w in (q, w - d * q) ||]
 
 -- | Types allowing to multiply wide and return the high word of result.
@@ -209,11 +194,7 @@ defaultMulHi x y = fromInteger $ (toInteger x * toInteger y) `shiftR` finiteBitS
 
 -- | Embed 'AST' into Haskell expression.
 quoteAST ::
-#if MIN_VERSION_template_haskell(2,17,0)
   (MulHi a, Lift a, Quote m) => AST a -> Code m (a -> a)
-#else
-  (MulHi a, Lift a) => AST a -> Q (TExp (a -> a))
-#endif
 quoteAST = \case
   Arg            -> [|| id ||]
   Shr x k        -> [|| (`shiftR` k) . $$(quoteAST x) ||]

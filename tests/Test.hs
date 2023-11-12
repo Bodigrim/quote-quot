@@ -128,17 +128,12 @@ testQuotes = testGroup "Quotes"
   [ testGroup "Word8"  testQuotes(Word8)
   , testGroup "Word16" testQuotes(Word16)
   , testGroup "Word32" testQuotes(Word32)
-#if WORD_SIZE_IN_BITS == 64
   , testGroup "Word64" testQuotes(Word64)
-#endif
   , testGroup "Word"   testQuotes(Word)
-
   , testGroup "Int8"   testQuotes(Int8)
   , testGroup "Int16"  testQuotes(Int16)
   , testGroup "Int32"  testQuotes(Int32)
-#if WORD_SIZE_IN_BITS == 64
   , testGroup "Int64"  testQuotes(Int64)
-#endif
   , testGroup "Int"    testQuotes(Int)
   ]
 
@@ -148,16 +143,12 @@ testMulHi = testGroup "MulHi"
   , testGroup "Word8"   (mkTestsMulHi (Proxy @Word8))
   , testGroup "Word16"  (mkTestsMulHi (Proxy @Word16))
   , testGroup "Word32"  (mkTestsMulHi (Proxy @Word32))
-#if WORD_SIZE_IN_BITS == 64
   , testGroup "Word64"  (mkTestsMulHi (Proxy @Word64))
-#endif
   , testGroup "Int"     (mkTestsMulHi (Proxy @Int))
   , testGroup "Int8"    (mkTestsMulHi (Proxy @Int8))
   , testGroup "Int16"   (mkTestsMulHi (Proxy @Int16))
   , testGroup "Int32"   (mkTestsMulHi (Proxy @Int32))
-#if WORD_SIZE_IN_BITS == 64
   , testGroup "Int64"   (mkTestsMulHi (Proxy @Int64))
-#endif
   ]
 
 mkTestsMulHi

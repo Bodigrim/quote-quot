@@ -118,10 +118,13 @@ instance MulHi Word16 where
 instance MulHi Word32 where
   mulHi x y = fromIntegral ((fromIntegral x * fromIntegral y :: Word64) `shiftR` 32)
 
-#if WORD_SIZE_IN_BITS == 64
+-- | This instance is not efficient on 32-bit architecture.
 instance MulHi Word64 where
-  mulHi x y = fromIntegral (fromIntegral x `mulHi` fromIntegral y :: Word)
-#endif
+  mulHi x y
+    | finiteBitSize (0 :: Word) == 64
+    = fromIntegral (fromIntegral x `mulHi` fromIntegral y :: Word)
+    | otherwise
+    = defaultMulHi x y
 
 instance MulHi Word where
   mulHi (W# x) (W# y) = let !(# hi, _ #) = timesWord2# x y in W# hi
@@ -135,10 +138,13 @@ instance MulHi Int16 where
 instance MulHi Int32 where
   mulHi x y = fromIntegral ((fromIntegral x * fromIntegral y :: Int64) `shiftR` 32)
 
-#if WORD_SIZE_IN_BITS == 64
+-- | This instance is not efficient on 32-bit architecture.
 instance MulHi Int64 where
-  mulHi x y = fromIntegral (fromIntegral x `mulHi` fromIntegral y :: Int)
-#endif
+  mulHi x y
+    | finiteBitSize (0 :: Int) == 64
+    = fromIntegral (fromIntegral x `mulHi` fromIntegral y :: Int)
+    | otherwise
+    = defaultMulHi x y
 
 instance MulHi Int where
   mulHi (I# x) (I# y) = let !(# _, hi, _ #) = timesInt2# x y in I# hi
@@ -189,7 +195,7 @@ interpretAST ast n = go ast
   where
     go = \case
       Arg       -> n
-      MulHi x k -> fromInteger $ (toInteger (go x) * toInteger k) `shiftR` finiteBitSize k
+      MulHi x k -> defaultMulHi (go x) k
       MulLo x k -> go x * k
       Add x y   -> go x + go y
       Sub x y   -> go x - go y
@@ -197,6 +203,9 @@ interpretAST ast n = go ast
       Shr x k   -> go x `shiftR` k
       CmpGE x k -> if go x >= k then 1 else 0
       CmpLT x k -> if go x <  k then 1 else 0
+
+defaultMulHi :: (Integral a, FiniteBits a) => a -> a -> a
+defaultMulHi x y = fromInteger $ (toInteger x * toInteger y) `shiftR` finiteBitSize x
 
 -- | Embed 'AST' into Haskell expression.
 quoteAST ::

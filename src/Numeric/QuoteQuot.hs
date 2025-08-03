@@ -12,10 +12,12 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MagicHash #-}
+{-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE TemplateHaskellQuotes #-}
 {-# LANGUAGE UnboxedTuples #-}
 
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
+{-# OPTIONS_GHC -Wno-partial-type-signatures #-}
 
 module Numeric.QuoteQuot
   (
@@ -37,7 +39,6 @@ import Data.Bits
 import Data.Int
 import Data.Word
 import GHC.Exts
-import Language.Haskell.TH.Syntax
 
 -- | Quote integer division ('quot') by a compile-time known divisor,
 -- which generates source code, employing arithmetic and bitwise operations only.
@@ -77,17 +78,17 @@ import Language.Haskell.TH.Syntax
 -- than @(`@'quot'@` 10)@.
 --
 quoteQuot ::
-  (MulHi a, Lift a, Quote m) => a -> Code m (a -> a)
+  _ => a -> _ (a -> a)
 quoteQuot d = quoteAST (astQuot d)
 
 -- | Similar to 'quoteQuot', but for 'rem'.
 quoteRem ::
-  (MulHi a, Lift a, Quote m) => a -> Code m (a -> a)
+  _ => a -> _ (a -> a)
 quoteRem d = [|| snd . $$(quoteQuotRem d) ||]
 
 -- | Similar to 'quoteQuot', but for 'quotRem'.
 quoteQuotRem ::
-  (MulHi a, Lift a, Quote m) => a -> Code m (a -> (a, a))
+  _ => a -> _ (a -> (a, a))
 quoteQuotRem d = [|| \w -> let q = $$(quoteQuot d) w in (q, w - d * q) ||]
 
 -- | Types allowing to multiply wide and return the high word of result.
@@ -194,7 +195,7 @@ defaultMulHi x y = fromInteger $ (toInteger x * toInteger y) `shiftR` finiteBitS
 
 -- | Embed 'AST' into Haskell expression.
 quoteAST ::
-  (MulHi a, Lift a, Quote m) => AST a -> Code m (a -> a)
+  _ => AST a -> _ (a -> a)
 quoteAST = \case
   Arg            -> [|| id ||]
   Shr x k        -> [|| (`shiftR` k) . $$(quoteAST x) ||]

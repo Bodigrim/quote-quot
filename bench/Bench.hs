@@ -47,6 +47,13 @@ measureInt name f = bench name $
     $ measureInt "quoteQuot" $$(quoteQuot (n :: Int)) \
     ]
 
+#define benchDivInt(n) \
+  bgroup (show (n :: Int)) \
+    [ measureInt "div" (`div` (n :: Int)) \
+    , bcompare ("$NF == \"div\" && $(NF-1) == \"" ++ show (n :: Int) ++ "\" && $(NF-2) == \"Int\"") \
+    $ measureInt "quoteDiv" $$(quoteDiv (n :: Int)) \
+    ]
+
 main :: IO ()
 main = defaultMain
   [ bgroup "Word"
@@ -60,7 +67,13 @@ main = defaultMain
     [ benchInt(3)
     , benchInt(5)
     , benchInt(7)
-    , benchWord(10000)
+    , benchInt(10000)
+    ]
+  , bgroup "DivInt"
+    [ benchDivInt(3)
+    , benchDivInt(5)
+    , benchDivInt(7)
+    , benchDivInt(10000)
     ]
 #endif
   ]

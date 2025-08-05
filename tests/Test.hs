@@ -34,7 +34,7 @@ import Data.WideWord
 #endif
 
 main :: IO ()
-main = defaultMain $ testGroup "All" [testAst, testQuotes, testMulHi]
+main = defaultMain $ testGroup "All" [testAst, testQuotes, testDivs, testMulHi]
 
 testAst :: TestTree
 testAst = testGroup "Ast"
@@ -81,11 +81,15 @@ prop
   :: (Integral a, FiniteBits a, Show a)
   => a -> Positive a -> Property
 prop x (Positive y) =
-  q === ref
+  (q === qref) .&&. (d === dref)
   where
-    ref = x `quot` y
-    ast = astQuot y
-    q   = interpretAST ast x
+    qref = x `quot` y
+    dref = x `div` y
+    qast = astQuot y
+    dast = assumeNonNegArg (astQuot y)
+    q    = interpretAST qast x
+    d | x < 0 = -(interpretAST dast (-(x + 1)) + 1)
+      | otherwise = q
 
 propNonNeg
   :: (Integral a, FiniteBits a, Show a)
@@ -121,7 +125,22 @@ instance Arbitrary Int128  where arbitrary = arbitrarySizedBoundedIntegral
     , testProperty "10" $ \x -> $$(quoteQuotRem (10 :: ty)) x === x `quotRem` 10 \
     , testProperty "maxBound" $ \x -> $$(quoteQuotRem (maxBound :: ty)) x === x `quotRem` maxBound \
     , testProperty "maxBound - 1" $ \x -> $$(quoteQuotRem (maxBound - 1 :: ty)) x === x `quotRem` (maxBound - 1) \
-    ] \
+    ]
+
+#define testDivs(ty) \
+    [ testProperty  "1" $ \x -> $$(quoteDivMod  (1 :: ty)) x === x `divMod`  1 \
+    , testProperty  "2" $ \x -> $$(quoteDivMod  (2 :: ty)) x === x `divMod`  2 \
+    , testProperty  "3" $ \x -> $$(quoteDivMod  (3 :: ty)) x === x `divMod`  3 \
+    , testProperty  "4" $ \x -> $$(quoteDivMod  (4 :: ty)) x === x `divMod`  4 \
+    , testProperty  "5" $ \x -> $$(quoteDivMod  (5 :: ty)) x === x `divMod`  5 \
+    , testProperty  "6" $ \x -> $$(quoteDivMod  (6 :: ty)) x === x `divMod`  6 \
+    , testProperty  "7" $ \x -> $$(quoteDivMod  (7 :: ty)) x === x `divMod`  7 \
+    , testProperty  "8" $ \x -> $$(quoteDivMod  (8 :: ty)) x === x `divMod`  8 \
+    , testProperty  "9" $ \x -> $$(quoteDivMod  (9 :: ty)) x === x `divMod`  9 \
+    , testProperty "10" $ \x -> $$(quoteDivMod (10 :: ty)) x === x `divMod` 10 \
+    , testProperty "maxBound" $ \x -> $$(quoteDivMod (maxBound :: ty)) x === x `divMod` maxBound \
+    , testProperty "maxBound - 1" $ \x -> $$(quoteDivMod (maxBound - 1 :: ty)) x === x `divMod` (maxBound - 1) \
+    ]
 
 testQuotes :: TestTree
 testQuotes = testGroup "Quotes"
@@ -135,6 +154,20 @@ testQuotes = testGroup "Quotes"
   , testGroup "Int32"  testQuotes(Int32)
   , testGroup "Int64"  testQuotes(Int64)
   , testGroup "Int"    testQuotes(Int)
+  ]
+
+testDivs :: TestTree
+testDivs = testGroup "Divs"
+  [ testGroup "Word8"  testDivs(Word8)
+  , testGroup "Word16" testDivs(Word16)
+  , testGroup "Word32" testDivs(Word32)
+  , testGroup "Word64" testDivs(Word64)
+  , testGroup "Word"   testDivs(Word)
+  , testGroup "Int8"   testDivs(Int8)
+  , testGroup "Int16"  testDivs(Int16)
+  , testGroup "Int32"  testDivs(Int32)
+  , testGroup "Int64"  testDivs(Int64)
+  , testGroup "Int"    testDivs(Int)
   ]
 
 testMulHi :: TestTree

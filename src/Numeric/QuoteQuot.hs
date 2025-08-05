@@ -10,14 +10,14 @@
 --
 
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LexicalNegation #-}
 {-# LANGUAGE MagicHash #-}
-{-# LANGUAGE PartialTypeSignatures #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskellQuotes #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UnboxedTuples #-}
-
-{-# OPTIONS_GHC -Wno-missing-signatures #-}
-{-# OPTIONS_GHC -Wno-partial-type-signatures #-}
 
 module Numeric.QuoteQuot
   (
@@ -25,6 +25,9 @@ module Numeric.QuoteQuot
     quoteQuot
   , quoteRem
   , quoteQuotRem
+  , quoteDiv
+  , quoteMod
+  , quoteDivMod
   -- * AST
   , astQuot
   , AST(..)
@@ -39,6 +42,7 @@ import Data.Bits
 import Data.Int
 import Data.Word
 import GHC.Exts
+import Language.Haskell.TH.Syntax
 
 -- | Quote integer division ('quot') by a compile-time known divisor,
 -- which generates source code, employing arithmetic and bitwise operations only.
@@ -77,19 +81,58 @@ import GHC.Exts
 -- Benchmarks show that this implementation is __3.5x faster__
 -- than @(`@'quot'@` 10)@.
 --
-quoteQuot ::
-  _ => a -> _ (a -> a)
+quoteQuot :: (MulHi a, Lift a, Quote m)
+          => a -> Code m (a -> a)
 quoteQuot d = quoteAST (astQuot d)
 
 -- | Similar to 'quoteQuot', but for 'rem'.
-quoteRem ::
-  _ => a -> _ (a -> a)
+quoteRem :: (MulHi a, Lift a, Quote m)
+         => a -> Code m (a -> a)
 quoteRem d = [|| snd . $$(quoteQuotRem d) ||]
 
 -- | Similar to 'quoteQuot', but for 'quotRem'.
-quoteQuotRem ::
-  _ => a -> _ (a -> (a, a))
+quoteQuotRem :: (MulHi a, Lift a, Quote m)
+             => a -> Code m (a -> (a, a))
 quoteQuotRem d = [|| \w -> let q = $$(quoteQuot d) w in (q, w - d * q) ||]
+
+-- | Similar to 'quoteQuot', but for 'div'.
+quoteDiv :: forall a m. (SignedMulHi a, Lift a, Lift (Unsigned a), Quote m)
+         => a -> Code m (a -> a)
+quoteDiv d
+    | isSigned d
+    = [|| \i -> if i < 0
+                then w2i -(1 + $$(go) (fromIntegral -(i + 1)))
+                else w2i $ $$(go) (fromIntegral i) ||]
+    | otherwise = quoteQuot d
+  where
+    go :: Code m (Unsigned a -> Unsigned a)
+    go = quoteAST (unsignedQuot (fromIntegral d))
+
+-- | Similar to 'quoteRem', but for 'mod'.
+quoteMod :: (SignedMulHi a, Lift a, Lift (Unsigned a), Quote m)
+         => a -> Code m (a -> a)
+quoteMod d = [|| snd . $$(quoteDivMod d) ||]
+
+-- | Similar to 'quoteDiv', but for 'divMod'.
+quoteDivMod :: (SignedMulHi a, Lift a, Lift (Unsigned a), Quote m) => a -> Code m (a -> (a, a))
+quoteDivMod d = [|| \w -> let q = $$(quoteDiv d) w in (q, w - d * q) ||]
+
+-- | Associate the corresponding unsigned type with each 'MulHi' type.  Also a
+-- conversion function back to the signed type for use in splices.
+class (MulHi (Unsigned a), MulHi a) => SignedMulHi a where
+    type Unsigned a
+    w2i :: Unsigned a -> a
+    w2i = fromIntegral
+instance SignedMulHi Word   where type Unsigned _ = Word
+instance SignedMulHi Int    where type Unsigned _ = Word
+instance SignedMulHi Word8  where type Unsigned _ = Word8
+instance SignedMulHi Int8   where type Unsigned _ = Word8
+instance SignedMulHi Word16 where type Unsigned _ = Word16
+instance SignedMulHi Int16  where type Unsigned _ = Word16
+instance SignedMulHi Word32 where type Unsigned _ = Word32
+instance SignedMulHi Int32  where type Unsigned _ = Word32
+instance SignedMulHi Word64 where type Unsigned _ = Word64
+instance SignedMulHi Int64  where type Unsigned _ = Word64
 
 -- | Types allowing to multiply wide and return the high word of result.
 class (Integral a, FiniteBits a) => MulHi a where
@@ -194,8 +237,7 @@ defaultMulHi :: (Integral a, FiniteBits a) => a -> a -> a
 defaultMulHi x y = fromInteger $ (toInteger x * toInteger y) `shiftR` finiteBitSize x
 
 -- | Embed 'AST' into Haskell expression.
-quoteAST ::
-  _ => AST a -> _ (a -> a)
+quoteAST :: (MulHi a, Lift a, Quote m) => AST a -> Code m (a -> a)
 quoteAST = \case
   Arg            -> [|| id ||]
   Shr x k        -> [|| (`shiftR` k) . $$(quoteAST x) ||]

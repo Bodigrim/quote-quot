@@ -96,43 +96,40 @@ quoteQuotRem :: (MulHi a, Lift a, Quote m)
 quoteQuotRem d = [|| \w -> let q = $$(quoteQuot d) w in (q, w - d * q) ||]
 
 -- | Similar to 'quoteQuot', but for 'div'.
-quoteDiv :: forall a m. (SignedMulHi a, Lift a, Lift (Unsigned a), Quote m)
+quoteDiv :: forall a m. (FiniteBits a, FiniteBits (Unsigned a), MulHi a, MulHi (Unsigned a), Lift a, Lift (Unsigned a), Integral a, Integral (Unsigned a), Quote m)
          => a -> Code m (a -> a)
 quoteDiv d
     | isSigned d
-    = [|| \i -> if i < 0
-                then w2i -(1 + $$(go) (fromIntegral -(i + 1)))
-                else w2i $ $$(go) (fromIntegral i) ||]
+    = [|| \(i :: a') -> let w2i = fromIntegral :: Unsigned a' -> a' in
+                if i < 0
+                then w2i -(1 + $$go (fromIntegral -(i + 1)))
+                else w2i $ $$go (fromIntegral i) ||]
     | otherwise = quoteQuot d
   where
     go :: Code m (Unsigned a -> Unsigned a)
     go = quoteAST (unsignedQuot (fromIntegral d))
 
 -- | Similar to 'quoteRem', but for 'mod'.
-quoteMod :: (SignedMulHi a, Lift a, Lift (Unsigned a), Quote m)
+quoteMod :: (FiniteBits a, FiniteBits (Unsigned a), MulHi a, MulHi (Unsigned a), Lift a, Lift (Unsigned a), Integral a, Integral (Unsigned a), Quote m)
          => a -> Code m (a -> a)
 quoteMod d = [|| snd . $$(quoteDivMod d) ||]
 
 -- | Similar to 'quoteDiv', but for 'divMod'.
-quoteDivMod :: (SignedMulHi a, Lift a, Lift (Unsigned a), Quote m) => a -> Code m (a -> (a, a))
+quoteDivMod :: (FiniteBits a, FiniteBits (Unsigned a), MulHi a, MulHi (Unsigned a), Lift a, Lift (Unsigned a), Integral a, Integral (Unsigned a), Quote m) => a -> Code m (a -> (a, a))
 quoteDivMod d = [|| \w -> let q = $$(quoteDiv d) w in (q, w - d * q) ||]
 
--- | Associate the corresponding unsigned type with each 'MulHi' type.  Also a
--- conversion function back to the signed type for use in splices.
-class (MulHi (Unsigned a), MulHi a) => SignedMulHi a where
-    type Unsigned a
-    w2i :: Unsigned a -> a
-    w2i = fromIntegral
-instance SignedMulHi Word   where type Unsigned _ = Word
-instance SignedMulHi Int    where type Unsigned _ = Word
-instance SignedMulHi Word8  where type Unsigned _ = Word8
-instance SignedMulHi Int8   where type Unsigned _ = Word8
-instance SignedMulHi Word16 where type Unsigned _ = Word16
-instance SignedMulHi Int16  where type Unsigned _ = Word16
-instance SignedMulHi Word32 where type Unsigned _ = Word32
-instance SignedMulHi Int32  where type Unsigned _ = Word32
-instance SignedMulHi Word64 where type Unsigned _ = Word64
-instance SignedMulHi Int64  where type Unsigned _ = Word64
+-- | Associate the corresponding unsigned type.
+type family Unsigned t
+type instance Unsigned Int = Word
+type instance Unsigned Word = Word
+type instance Unsigned Int8 = Word8
+type instance Unsigned Word8 = Word8
+type instance Unsigned Int16 = Word16
+type instance Unsigned Word16 = Word16
+type instance Unsigned Int32 = Word32
+type instance Unsigned Word32 = Word32
+type instance Unsigned Int64 = Word64
+type instance Unsigned Word64 = Word64
 
 -- | Types allowing to multiply wide and return the high word of result.
 class (Integral a, FiniteBits a) => MulHi a where

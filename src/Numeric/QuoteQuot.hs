@@ -10,11 +10,13 @@
 --
 
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE LexicalNegation #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE TemplateHaskellQuotes #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UnboxedTuples #-}
@@ -40,12 +42,17 @@ module Numeric.QuoteQuot
 import Prelude
 import Data.Bits
 import Data.Int
+import Data.Kind (Type)
 import Data.Word
 import GHC.Exts
-import Language.Haskell.TH.Syntax
+import Language.Haskell.TH.Syntax hiding (Type)
 
--- | Quote integer division ('quot') by a compile-time known divisor,
--- which generates source code, employing arithmetic and bitwise operations only.
+type Quotable :: Type -> Constraint
+type Quotable a = (MulHi a, Lift a)
+type Divable a = (Quotable a, Quotable (Unsigned a))
+
+-- | Quote integer division ('quot') by a compile-time known divisor, which
+-- generates source code, employing arithmetic and bitwise operations only.
 -- This is usually __2.5x-3.5x faster__ than using normal 'quot'.
 --
 -- > {-# LANGUAGE TemplateHaskell #-}
@@ -81,23 +88,19 @@ import Language.Haskell.TH.Syntax
 -- Benchmarks show that this implementation is __3.5x faster__
 -- than @(`@'quot'@` 10)@.
 --
-quoteQuot :: (MulHi a, Lift a, Quote m)
-          => a -> Code m (a -> a)
+quoteQuot :: forall a m. (Quotable a, Quote m) => a -> Code m (a -> a)
 quoteQuot d = quoteAST (astQuot d)
 
 -- | Similar to 'quoteQuot', but for 'rem'.
-quoteRem :: (MulHi a, Lift a, Quote m)
-         => a -> Code m (a -> a)
+quoteRem :: (Quotable a, Quote m) => a -> Code m (a -> a)
 quoteRem d = [|| snd . $$(quoteQuotRem d) ||]
 
 -- | Similar to 'quoteQuot', but for 'quotRem'.
-quoteQuotRem :: (MulHi a, Lift a, Quote m)
-             => a -> Code m (a -> (a, a))
+quoteQuotRem :: (Quotable a, Quote m) => a -> Code m (a -> (a, a))
 quoteQuotRem d = [|| \w -> let q = $$(quoteQuot d) w in (q, w - d * q) ||]
 
 -- | Similar to 'quoteQuot', but for 'div'.
-quoteDiv :: forall a m. (FiniteBits a, FiniteBits (Unsigned a), MulHi a, MulHi (Unsigned a), Lift a, Lift (Unsigned a), Integral a, Integral (Unsigned a), Quote m)
-         => a -> Code m (a -> a)
+quoteDiv :: forall a m. (Divable a, Quote m) => a -> Code m (a -> a)
 quoteDiv d
     | isSigned d
     = [|| \(i :: a') -> let w2i = fromIntegral :: Unsigned a' -> a' in
@@ -110,12 +113,11 @@ quoteDiv d
     go = quoteAST (unsignedQuot (fromIntegral d))
 
 -- | Similar to 'quoteRem', but for 'mod'.
-quoteMod :: (FiniteBits a, FiniteBits (Unsigned a), MulHi a, MulHi (Unsigned a), Lift a, Lift (Unsigned a), Integral a, Integral (Unsigned a), Quote m)
-         => a -> Code m (a -> a)
+quoteMod :: (Divable a, Quote m) => a -> Code m (a -> a)
 quoteMod d = [|| snd . $$(quoteDivMod d) ||]
 
 -- | Similar to 'quoteDiv', but for 'divMod'.
-quoteDivMod :: (FiniteBits a, FiniteBits (Unsigned a), MulHi a, MulHi (Unsigned a), Lift a, Lift (Unsigned a), Integral a, Integral (Unsigned a), Quote m) => a -> Code m (a -> (a, a))
+quoteDivMod :: (Divable a, Quote m) => a -> Code m (a -> (a, a))
 quoteDivMod d = [|| \w -> let q = $$(quoteDiv d) w in (q, w - d * q) ||]
 
 -- | Associate the corresponding unsigned type.
@@ -136,13 +138,16 @@ class (Integral a, FiniteBits a) => MulHi a where
   mulHi :: a -> a -> a
 
 instance MulHi Word8 where
-  mulHi x y = fromIntegral ((fromIntegral x * fromIntegral y :: Word16) `shiftR` 8)
+  mulHi x y = fromIntegral ((widen x * widen y) `shiftR` 8)
+    where widen = fromIntegral :: Word8 -> Word16
 
 instance MulHi Word16 where
-  mulHi x y = fromIntegral ((fromIntegral x * fromIntegral y :: Word32) `shiftR` 16)
+  mulHi x y = fromIntegral ((widen x * widen y) `shiftR` 16)
+    where widen = fromIntegral :: Word16 -> Word32
 
 instance MulHi Word32 where
-  mulHi x y = fromIntegral ((fromIntegral x * fromIntegral y :: Word64) `shiftR` 32)
+  mulHi x y = fromIntegral ((widen x * widen y) `shiftR` 32)
+    where widen = fromIntegral :: Word32 -> Word64
 
 -- | This instance is not efficient on 32-bit architecture.
 instance MulHi Word64 where
@@ -156,13 +161,16 @@ instance MulHi Word where
   mulHi (W# x) (W# y) = let !(# hi, _ #) = timesWord2# x y in W# hi
 
 instance MulHi Int8 where
-  mulHi x y = fromIntegral ((fromIntegral x * fromIntegral y :: Int16) `shiftR` 8)
+  mulHi x y = fromIntegral ((widen x * widen y) `shiftR` 8)
+    where widen = fromIntegral :: Int8 -> Int16
 
 instance MulHi Int16 where
-  mulHi x y = fromIntegral ((fromIntegral x * fromIntegral y :: Int32) `shiftR` 16)
+  mulHi x y = fromIntegral ((widen x * widen y) `shiftR` 16)
+    where widen = fromIntegral :: Int16 -> Int32
 
 instance MulHi Int32 where
-  mulHi x y = fromIntegral ((fromIntegral x * fromIntegral y :: Int64) `shiftR` 32)
+  mulHi x y = fromIntegral ((widen x * widen y) `shiftR` 32)
+    where widen = fromIntegral :: Int32 -> Int64
 
 -- | This instance is not efficient on 32-bit architecture.
 instance MulHi Int64 where
@@ -231,7 +239,13 @@ interpretAST ast n = go ast
       CmpLT x k -> if go x <  k then 1 else 0
 
 defaultMulHi :: (Integral a, FiniteBits a) => a -> a -> a
-defaultMulHi x y = fromInteger $ (toInteger x * toInteger y) `shiftR` finiteBitSize x
+defaultMulHi x y =
+    fromInteger $ (toInteger x * toInteger y) `shiftR` finiteBitSize x
+
+iprop :: Integral a => (a -> Bool) -> a -> a
+iprop p = \i -> fromIntegral (I# (dataToTag# (p i)))
+{-# INLINE iprop #-}
+
 
 -- | Embed 'AST' into Haskell expression.
 quoteAST :: (MulHi a, Lift a, Quote m) => AST a -> Code m (a -> a)
@@ -243,8 +257,8 @@ quoteAST = \case
   MulLo x k      -> [|| (* k) . $$(quoteAST x) ||]
   Add x y        -> [|| \w -> $$(quoteAST x) w + $$(quoteAST y) w ||]
   Sub x y        -> [|| \w -> $$(quoteAST x) w - $$(quoteAST y) w ||]
-  CmpGE x k      -> [|| (\w -> fromIntegral (I# (dataToTag# (w >= k)))) . $$(quoteAST x) ||]
-  CmpLT x k      -> [|| (\w -> fromIntegral (I# (dataToTag# (w <  k)))) . $$(quoteAST x) ||]
+  CmpGE x k      -> [|| iprop (>= k) . $$(quoteAST x) ||]
+  CmpLT x k      -> [|| iprop (< k) . $$(quoteAST x) ||]
 
 -- | 'astQuot' @d@ constructs an 'AST' representing
 -- a function, equivalent to 'quot' @a@ for positive @a@,
@@ -283,16 +297,17 @@ unsignedQuot k'
   = CmpGE Arg k'
   -- Hacker's Delight, 10-8, Listing 1
   | k >= 1 `shiftL` shft
-  = shr (MulHi Arg magic) (shft + kZeros)
+  = shr (MulHi Arg magic) shft'
   -- Hacker's Delight, 10-8, Listing 3
   | otherwise
-  = shr (Add (shr (Sub Arg (MulHi Arg magic)) 1) (MulHi Arg magic)) (shft - 1 + kZeros)
+  = shr (Add (shr (Sub Arg (MulHi Arg magic)) 1) (MulHi Arg magic)) (shft' - 1)
   where
     fbs = finiteBitSize k'
     kZeros = countTrailingZeros k'
     k = k' `shiftR` kZeros
     r0 = fromInteger ((1 `shiftL` fbs) `rem` toInteger k)
     shft = go r0 0
+    shft' = shft + kZeros
     magic = fromInteger ((1 `shiftL` (fbs + shft)) `quot` toInteger k + 1)
 
     go r s
@@ -314,16 +329,17 @@ signedQuot k'
   = Sub (CmpGE Arg k') (CmpLT Arg (1 - k'))
   -- Hacker's Delight, 10-3, Listing 2
   | magic >= 0
-  = Add (shr (MulHi Arg magic) (shft + kZeros)) (CmpLT Arg 0)
+  = Add (shr (MulHi Arg magic) shft') (CmpLT Arg 0)
   -- Hacker's Delight, 10-3, Listing 3
   | otherwise
-  = Add (shr (Add Arg (MulHi Arg magic)) (shft + kZeros)) (CmpLT Arg 0)
+  = Add (shr (Add Arg (MulHi Arg magic)) shft') (CmpLT Arg 0)
   where
     fbs = finiteBitSize k'
     kZeros = countTrailingZeros k'
     k = k' `shiftR` kZeros
     r0 = fromInteger ((1 `shiftL` fbs) `rem` toInteger k)
     shft = go r0 0
+    shft' = shft + kZeros
     magic = fromInteger ((1 `shiftL` (fbs + shft)) `quot` toInteger k + 1)
 
     go r s

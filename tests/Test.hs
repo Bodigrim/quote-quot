@@ -56,6 +56,7 @@ testAst = testGroup "Ast"
   , testGroup "Word128" (mkTests (Proxy @Word128))
   , testGroup "Word256" (mkTests (Proxy @Word256))
   , testGroup "Int128"  (mkTests (Proxy @Int128))
+  , testGroup "Int256"  (mkTests (Proxy @Int256))
 #endif
   ]
 
@@ -110,6 +111,7 @@ instance Arbitrary Int24   where arbitrary = arbitrarySizedBoundedIntegral
 instance Arbitrary Word128 where arbitrary = arbitrarySizedBoundedIntegral
 instance Arbitrary Word256 where arbitrary = arbitrarySizedBoundedIntegral
 instance Arbitrary Int128  where arbitrary = arbitrarySizedBoundedIntegral
+instance Arbitrary Int256  where arbitrary = arbitrarySizedBoundedIntegral
 #endif
 
 #define testQuotes(ty) \

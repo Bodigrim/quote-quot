@@ -44,7 +44,7 @@ test-suite quote-quot-tests
     quote-quot,
     tasty,
     tasty-quickcheck
-    -- wide-word >=0.1.1.2,
+    -- wide-word >=0.1.9,
     -- word24,
 
 benchmark quote-quot-bench

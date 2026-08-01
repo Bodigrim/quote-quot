@@ -1,7 +1,7 @@
-cabal-version:      >=1.10
+cabal-version:      2.2
 name:               quote-quot
 version:            0.2.1.0
-license:            BSD3
+license:            BSD-3-Clause
 license-file:       LICENSE
 copyright:          2020-2022 Andrew Lelechenko
 maintainer:         andrew.lelechenko@gmail.com
@@ -19,7 +19,7 @@ description:
 
 category:           Math, Numerical
 build-type:         Simple
-extra-source-files:
+extra-doc-files:
   changelog.md
   README.md
 

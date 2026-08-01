@@ -9,10 +9,6 @@
 {-# LANGUAGE TypeApplications #-}
 
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# HLINT ignore "Unused LANGUAGE pragma" #-}
-
-#include "MachDeps.h"
 
 module Main (main) where
 

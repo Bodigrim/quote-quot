@@ -1,3 +1,8 @@
+## 0.2.2.0
+
+* Add `quoteDiv`, `quoteMod` and `quoteDivMod`.
+* Define `instance MulHi {Int,Word}64` even on 32-bit arch.
+
 ## 0.2.1.0
 
 * Add `quoteAST` and `assumeNonNegArg`.

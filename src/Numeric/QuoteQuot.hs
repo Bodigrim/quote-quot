@@ -20,6 +20,7 @@
 {-# LANGUAGE TemplateHaskellQuotes #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UnboxedTuples #-}
+{- HLINT ignore "Redundant lambda" -}
 
 module Numeric.QuoteQuot
   (
@@ -37,19 +38,14 @@ module Numeric.QuoteQuot
   , quoteAST
   , assumeNonNegArg
   , MulHi(..)
+  , Unsigned
   ) where
 
-import Prelude
-import Data.Bits
-import Data.Int
-import Data.Kind (Type)
-import Data.Word
-import GHC.Exts
-import Language.Haskell.TH.Lift
-
-type Quotable :: Type -> Constraint
-type Quotable a = (MulHi a, Lift a)
-type Divable a = (Quotable a, Quotable (Unsigned a))
+import Data.Bits (shiftL, shiftR, isSigned, FiniteBits, countTrailingZeros, finiteBitSize)
+import Data.Int (Int8, Int16, Int32, Int64)
+import Data.Word ( Word8, Word16, Word32, Word64 )
+import GHC.Exts (dataToTag#, Int(..), Word(..), timesInt2#, timesWord2#)
+import Language.Haskell.TH.Lift (Lift, Quote, Code)
 
 -- | Quote integer division ('quot') by a compile-time known divisor, which
 -- generates source code, employing arithmetic and bitwise operations only.
@@ -88,19 +84,21 @@ type Divable a = (Quotable a, Quotable (Unsigned a))
 -- Benchmarks show that this implementation is __3.5x faster__
 -- than @(`@'quot'@` 10)@.
 --
-quoteQuot :: forall a m. (Quotable a, Quote m) => a -> Code m (a -> a)
+quoteQuot :: forall a m. (MulHi a, Lift a, Quote m) => a -> Code m (a -> a)
 quoteQuot d = quoteAST (astQuot d)
 
 -- | Similar to 'quoteQuot', but for 'rem'.
-quoteRem :: (Quotable a, Quote m) => a -> Code m (a -> a)
+quoteRem :: (MulHi a, Lift a, Quote m) => a -> Code m (a -> a)
 quoteRem d = [|| snd . $$(quoteQuotRem d) ||]
 
 -- | Similar to 'quoteQuot', but for 'quotRem'.
-quoteQuotRem :: (Quotable a, Quote m) => a -> Code m (a -> (a, a))
+quoteQuotRem :: (MulHi a, Lift a, Quote m) => a -> Code m (a -> (a, a))
 quoteQuotRem d = [|| \w -> let q = $$(quoteQuot d) w in (q, w - d * q) ||]
 
 -- | Similar to 'quoteQuot', but for 'div'.
-quoteDiv :: forall a m. (Divable a, Quote m) => a -> Code m (a -> a)
+--
+-- @since 0.2.2.0
+quoteDiv :: forall a m. (MulHi a, Lift a, MulHi (Unsigned a), Lift (Unsigned a), Quote m) => a -> Code m (a -> a)
 quoteDiv d
     | isSigned d
     = [|| \(i :: a') -> let w2i = fromIntegral :: Unsigned a' -> a' in
@@ -112,15 +110,21 @@ quoteDiv d
     go :: Code m (Unsigned a -> Unsigned a)
     go = quoteAST (unsignedQuot (fromIntegral d))
 
--- | Similar to 'quoteRem', but for 'mod'.
-quoteMod :: (Divable a, Quote m) => a -> Code m (a -> a)
+-- | Similar to 'quoteQuot', but for 'mod'.
+--
+-- @since 0.2.2.0
+quoteMod :: (MulHi a, Lift a, MulHi (Unsigned a), Lift (Unsigned a), Quote m) => a -> Code m (a -> a)
 quoteMod d = [|| snd . $$(quoteDivMod d) ||]
 
--- | Similar to 'quoteDiv', but for 'divMod'.
-quoteDivMod :: (Divable a, Quote m) => a -> Code m (a -> (a, a))
+-- | Similar to 'quoteQuot', but for 'divMod'.
+--
+-- @since 0.2.2.0
+quoteDivMod :: (MulHi a, Lift a, MulHi (Unsigned a), Lift (Unsigned a), Quote m) => a -> Code m (a -> (a, a))
 quoteDivMod d = [|| \w -> let q = $$(quoteDiv d) w in (q, w - d * q) ||]
 
 -- | Associate the corresponding unsigned type.
+--
+-- @since 0.2.2.0
 type family Unsigned t
 type instance Unsigned Int = Word
 type instance Unsigned Word = Word

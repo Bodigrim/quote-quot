@@ -31,7 +31,7 @@ library
   ghc-options:      -Wall -Wcompat
   build-depends:
     base >=4.18 && < 5,
-    template-haskell >=2.17 && <2.24
+    template-haskell-lift >= 0.1 && < 0.2
 
 test-suite quote-quot-tests
   type:             exitcode-stdio-1.0

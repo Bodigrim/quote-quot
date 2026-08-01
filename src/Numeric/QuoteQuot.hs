@@ -45,7 +45,7 @@ import Data.Int
 import Data.Kind (Type)
 import Data.Word
 import GHC.Exts
-import Language.Haskell.TH.Syntax hiding (Type)
+import Language.Haskell.TH.Lift
 
 type Quotable :: Type -> Constraint
 type Quotable a = (MulHi a, Lift a)
